@@ -1,0 +1,46 @@
+- name: Install Apache With Authentication On RedHat Web Servers
+  hosts: webserver
+  become: true
+  vars:
+    os_support:
+     - RedHat
+     - Centos
+     - Fedora
+  tasks:
+    - name: Install Apache In Supported OS Host
+      yum:
+        name: httpd
+        state: present
+      when:
+       - ansible_distribution in os_support
+
+    - name: Install passlib module using for create htpassd file
+      pip:
+        name: passlib
+
+    - name: Load secret password
+      include_vars:
+       file: /root/ansible/books/mainbook/secret/apache_password
+
+    - name: Create User Authentication For Access Web
+      user:
+       name: web_user
+       password: "{{ password | string }}"
+       state: present
+
+    - name: Create htpasswd File For Authentication
+      htpasswd:
+       path: /etc/httpd/.htpasswd
+       name: web_user
+       password: "{{ password | string}}"
+       owner: root
+
+    - name: Create Virtual Host Listen Port 8080 For Website
+      template:
+       src: /root/ansible/books/mainbook/template/mysite.conf
+       dest: /etc/httpd/conf.d/mysite.conf
+
+    - name: Restart service Apache
+      service:
+        name: httpd
+        state: restarted
